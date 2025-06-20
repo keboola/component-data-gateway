@@ -1,0 +1,1 @@
+https://github.com/keboola/component-data-gateway/blob/master/README.md
