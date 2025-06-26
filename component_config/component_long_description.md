@@ -1,1 +1,1 @@
-Keboola Data Gateway long description
+Keboola Data Gateway creates a read-only Snowflake workspace and loads selected tables from your project.

@@ -1,12 +1,32 @@
 import logging
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError
 from keboola.component.exceptions import UserException
 
 
+class Keys(BaseModel):
+    private: str = Field(alias="#private")
+    public: str
+
+
+class SSH(BaseModel):
+    keys: Keys = Field(default=Keys)
+
+
+class ColumnSpec(BaseModel):
+    name: str
+    dbName: str
+    type: str
+    nullable: bool
+    default: str = ""
+    size: str = ""
+
+
 class Configuration(BaseModel):
-    print_hello: bool
-    api_token: str = Field(alias="#api_token")
+    ssh: SSH = Field(default_factory=SSH)
+    table_id: str = Field(alias="tableId")
+    preserve_existing_tables: bool = True
     debug: bool = False
+    items: list[ColumnSpec]
 
     def __init__(self, **data):
         try:
@@ -17,9 +37,3 @@ class Configuration(BaseModel):
 
         if self.debug:
             logging.debug("Component will run in Debug mode")
-
-    @field_validator('api_token')
-    def token_must_be_uppercase(cls, v):
-        if not v.isupper():
-            raise UserException('API token must be uppercase')
-        return v
