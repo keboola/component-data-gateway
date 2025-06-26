@@ -27,6 +27,7 @@ class Table(BaseConfigModel):
     changed_since: Optional[str] = Field(default=None, alias="changedSince")
     keep_internal_timestamp_column: bool = Field(default=False, exclude=True)
     overwrite: bool = Field(default=True, alias="overwrite")
+    incremental: bool = Field(default=False)
 
     @computed_field(alias="dropTimestampColumn", return_type=bool)
     @property

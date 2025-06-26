@@ -59,6 +59,9 @@ class Component(ComponentBase):
         """
         selected_table = [table for table in self.storage_input.tables if table.source == self.params.table_id]
 
+        selected_table[0].destination = self.params.destination_table_name
+        selected_table[0].incremental = self.params.incremental
+
         selected_table[0].columns = []
 
         for column in self.params.items:
@@ -78,10 +81,6 @@ class Component(ComponentBase):
         # dropTimestampColumn is accepted only by load-clone endpoint
         if self.params.load_type == "load":
             in_table[0].pop("dropTimestampColumn")
-
-        if not in_table[0].get("whereColumn"):
-            in_table[0].pop("whereColumn")
-            in_table[0].pop("whereOperator")
 
         return in_table
 
