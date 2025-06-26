@@ -27,6 +27,7 @@ class Configuration(BaseModel):
     preserve_existing_tables: bool = True
     debug: bool = False
     items: list[ColumnSpec]
+    load_type: str = Field(default="load", alias="loadType")
 
     def __init__(self, **data):
         try:

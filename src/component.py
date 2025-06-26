@@ -37,7 +37,7 @@ class Component(ComponentBase):
             workspace_id=workspace_id,
             table_mapping=table_mapping,
             preserve=self.params.preserve_existing_tables,
-            load_type="load",
+            load_type=self.params.load_type,
         )
 
         while True:
@@ -59,6 +59,8 @@ class Component(ComponentBase):
         """
         selected_table = [table for table in self.storage_input.tables if table.source == self.params.table_id]
 
+        selected_table[0].columns = []
+
         for column in self.params.items:
             selected_table[0].columns.append(
                 Column(
@@ -72,7 +74,10 @@ class Component(ComponentBase):
             )
 
         in_table = StorageInput(tables=selected_table).model_dump(by_alias=True)["tables"]
-        in_table[0].pop("dropTimestampColumn")
+
+        # dropTimestampColumn is accepted only by load-clone endpoint
+        if self.params.load_type == "load":
+            in_table[0].pop("dropTimestampColumn")
 
         if not in_table[0].get("whereColumn"):
             in_table[0].pop("whereColumn")
