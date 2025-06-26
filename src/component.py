@@ -5,10 +5,12 @@ Template Component main class.
 
 import logging
 import time
+from datetime import datetime
 
 from kbcstorage.client import Client
 from keboola.component.base import ComponentBase
 from keboola.component.exceptions import UserException
+from requests import HTTPError
 
 from configuration import Configuration
 from load_tables_dataclass import Column, StorageInput
@@ -33,39 +35,52 @@ class Component(ComponentBase):
 
         table_mapping = self.build_table_mapping()
 
-        job = self.client.workspaces.load_tables(
-            workspace_id=workspace_id,
-            table_mapping=table_mapping,
-            preserve=self.params.preserve_existing_tables,
-            load_type=self.params.load_type,
-        )
+        try:
+            job = self.client.workspaces.load_tables(
+                workspace_id=workspace_id,
+                table_mapping=table_mapping,
+                preserve=self.params.preserve_existing_tables,
+                load_type=self.params.load_type,
+            )
 
-        while True:
-            job = self.client.jobs.detail(job["id"])
-            if job["status"] in ["success", "error"]:
-                break
-            logging.info(f"Job {job['id']} is still running, status: {job['status']}")
-            time.sleep(5)
+            while True:
+                job = self.client.jobs.detail(job["id"])
+                if job["status"] in ["success", "error"]:
+                    break
+                logging.info(f"Job {job['id']} is still running, status: {job['status']}")
+                time.sleep(5)
 
-        match job["status"]:
-            case "error":
-                raise UserException(f"Job {job['id']} failed with error: {job.get('error', {}).get('message')}")
-            case "success":
-                logging.info(f"Job {job['id']} finished successfully.")
+            match job["status"]:
+                case "error":
+                    raise UserException(f"Job {job['id']} failed with error: {job.get('error', {}).get('message')}")
+                case "success":
+                    created = datetime.fromisoformat(job["createdTime"])
+                    start = datetime.fromisoformat(job["startTime"])
+                    end = datetime.fromisoformat(job["endTime"])
+                    logging.info(
+                        f"Load of {self.params.destination_table_name} finished successfully. Queued for "
+                        f"{(start - created).seconds}s and processed {(end - start).seconds}s."
+                    )
+
+        except HTTPError as exc:
+            raise UserException(f"Loading table failed: {exc.response.text}")
+        except Exception as exc:
+            raise UserException(f"Loadiing table failed: {str(exc)}")
 
     def build_table_mapping(self) -> list[dict]:
         """
         Combines the input table with the columns specified in the configuration.
         """
-        selected_table = [table for table in self.storage_input.tables if table.source == self.params.table_id]
+        tbl = [table for table in self.storage_input.tables if table.source == self.params.table_id][0]
 
-        selected_table[0].destination = self.params.destination_table_name
-        selected_table[0].incremental = self.params.incremental
+        tbl.destination = self.params.destination_table_name
+        tbl.incremental = self.params.incremental
+        tbl.overwrite = False if self.params.incremental else tbl.overwrite
 
-        selected_table[0].columns = []
+        tbl.columns = []
 
         for column in self.params.items:
-            selected_table[0].columns.append(
+            tbl.columns.append(
                 Column(
                     source=column.name,
                     destination=column.dbName,
@@ -76,7 +91,7 @@ class Component(ComponentBase):
                 )
             )
 
-        in_table = StorageInput(tables=selected_table).model_dump(by_alias=True)["tables"]
+        in_table = StorageInput(tables=[tbl]).model_dump(by_alias=True)["tables"]
 
         # dropTimestampColumn is accepted only by load-clone endpoint
         if self.params.load_type == "load":
