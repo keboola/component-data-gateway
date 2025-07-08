@@ -36,7 +36,7 @@ class Component(ComponentBase):
                 workspace_id=workspace_id,
                 table_mapping=table_mapping,
                 preserve=self.params.preserve_existing_tables,
-                load_type=self.params.load_type,
+                load_type="load-clone" if self.params.clone else "load",
             )
 
             while True:
@@ -89,7 +89,7 @@ class Component(ComponentBase):
         in_table = StorageInput(tables=[tbl]).model_dump(by_alias=True)["tables"]
 
         # dropTimestampColumn is accepted only by load-clone endpoint
-        if self.params.load_type == "load":
+        if not self.params.clone:
             in_table[0].pop("dropTimestampColumn")
 
         return in_table
