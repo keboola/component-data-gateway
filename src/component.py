@@ -1,8 +1,3 @@
-"""
-Template Component main class.
-
-"""
-
 import logging
 import time
 from datetime import datetime
@@ -10,7 +5,6 @@ from datetime import datetime
 from kbcstorage.client import Client
 from keboola.component.base import ComponentBase
 from keboola.component.exceptions import UserException
-from keboola.utils.date import get_past_date
 from requests import HTTPError
 
 from configuration import Configuration
@@ -77,21 +71,9 @@ class Component(ComponentBase):
         Combines the input table with the columns specified in the configuration.
         """
         tbl = [table for table in self.storage_input.tables if table.source == self.params.table_id][0]
-
         tbl.destination = self.params.destination_table_name
-        tbl.incremental = self.params.incremental
-        tbl.overwrite = False if self.params.incremental else tbl.overwrite
-
-        if tbl.changed_since == "adaptive":
-            tbl.changed_since = self.get_state_file().get("last_run")
-        elif tbl.changed_since:
-            try:
-                tbl.changed_since = get_past_date(tbl.changed_since).timestamp()
-            except Exception as e:
-                raise UserException(f"Invalid 'changedSince' value: {tbl.changed_since}. Error: {str(e)}")
 
         tbl.columns = []
-
         for column in self.params.items:
             tbl.columns.append(
                 Column(

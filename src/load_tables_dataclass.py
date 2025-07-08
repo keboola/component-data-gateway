@@ -23,7 +23,6 @@ class Table(BaseConfigModel):
     where_values: list[str] = Field(default_factory=list, alias="whereValues")
     where_operator: Optional[str] = Field(default=None, alias="whereOperator")
     columns: Optional[list[Column] | list[str]] = Field(default_factory=list)
-    changed_since: Optional[str | float] = Field(default=None, alias="changedSince")
     keep_internal_timestamp_column: bool = Field(default=False, exclude=True)
     overwrite: bool = Field(default=True, alias="overwrite")
     incremental: bool = Field(default=False)
