@@ -64,7 +64,7 @@ class Component(ComponentBase):
         except HTTPError as e:
             raise UserException(f"Loading table failed: {e.response.text}")
         except Exception as e:
-            raise UserException(f"Loadiing table failed: {str(e)}")
+            raise UserException(f"Loading table failed: {str(e)}")
 
     def build_table_mapping(self) -> list[dict]:
         """

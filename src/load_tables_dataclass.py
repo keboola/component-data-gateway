@@ -34,4 +34,4 @@ class Table(BaseConfigModel):
 
 
 class StorageInput(BaseModel):
-    tables: list[Table] = Field(default=Table)
+    tables: list[Table] = Field(default_factory=list)

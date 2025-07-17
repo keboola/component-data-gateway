@@ -9,7 +9,7 @@ class Keys(BaseModel):
 
 
 class SSH(BaseModel):
-    keys: Keys = Field(default=Keys)
+    keys: Keys = Field(default_factory=Keys)
 
 
 class ColumnSpec(BaseModel):
