@@ -3,15 +3,6 @@ from pydantic import BaseModel, Field, ValidationError
 from keboola.component.exceptions import UserException
 
 
-class Keys(BaseModel):
-    private: str = Field(alias="#private")
-    public: str
-
-
-class SSH(BaseModel):
-    keys: Keys = Field(default_factory=Keys)
-
-
 class ColumnSpec(BaseModel):
     name: str
     dbName: str
@@ -22,7 +13,6 @@ class ColumnSpec(BaseModel):
 
 
 class Configuration(BaseModel):
-    ssh: SSH = Field(default_factory=SSH)
     table_id: str = Field(alias="tableId")
     destination_table_name: str = Field(alias="dbName")
     preserve_existing_tables: bool = True
