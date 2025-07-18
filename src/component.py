@@ -24,10 +24,11 @@ class Component(ComponentBase):
 
     def run(self):
         start_timestamp = time.time()
-        workspace_id = self.client.configurations.list_config_workspaces(
+        workspaces = self.client.configurations.list_config_workspaces(
             "keboola.app-data-gateway",
             self.environment_variables.config_id,
-        )[-1].get("id")
+        )
+        workspace_id = workspaces[-1].get("id") # get the id of latest created workspace
 
         table_mapping = self.build_table_mapping()
 
@@ -39,12 +40,14 @@ class Component(ComponentBase):
                 load_type="load-clone" if self.params.clone else "load",
             )
 
-            while True:
+            for i in range(60):
                 job = self.client.jobs.detail(job["id"])
                 if job["status"] in ["success", "error"]:
                     break
                 logging.info(f"Job {job['id']} is still running, status: {job['status']}")
                 time.sleep(5)
+                if i == 59:
+                    raise UserException(f"Job {job['id']} is still running giving up waiting.")
 
             match job["status"]:
                 case "error":
@@ -56,7 +59,7 @@ class Component(ComponentBase):
                     end = datetime.fromisoformat(job["endTime"])
                     logging.info(
                         f"Load of {self.params.destination_table_name} finished successfully. Queued for "
-                        f"{(start - created).seconds}s and processed {(end - start).seconds}s."
+                        f"{(start - created).seconds} s and processed for {(end - start).seconds} s."
                     )
 
             self.write_state_file({"last_run": start_timestamp})
@@ -69,6 +72,7 @@ class Component(ComponentBase):
     def build_table_mapping(self) -> list[dict]:
         """
         Combines the input table with the columns specified in the configuration.
+        Table name from configuration will always match one of the input tables.
         """
         tbl = [table for table in self.storage_input.tables if table.source == self.params.table_id][0]
         tbl.destination = self.params.destination_table_name
@@ -90,7 +94,7 @@ class Component(ComponentBase):
 
         # dropTimestampColumn is accepted only by load-clone endpoint
         if not self.params.clone:
-            in_table[0].pop("dropTimestampColumn")
+            in_table[0].pop("dropTimestampColumn") # it's always list of one table to keep the structure of the API
 
         return in_table
 
