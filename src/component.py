@@ -1,87 +1,102 @@
-"""
-Template Component main class.
-
-"""
-import csv
-from datetime import datetime
 import logging
+import time
+from datetime import datetime
 
+from kbcstorage.client import Client
 from keboola.component.base import ComponentBase
 from keboola.component.exceptions import UserException
+from requests import HTTPError
 
 from configuration import Configuration
+from load_tables_dataclass import Column, StorageInput
 
 
 class Component(ComponentBase):
-    """
-        Extends base class for general Python components. Initializes the CommonInterface
-        and performs configuration validation.
-
-        For easier debugging the data folder is picked up by default from `../data` path,
-        relative to working directory.
-
-        If `debug` parameter is present in the `config.json`, the default logger is set to verbose DEBUG mode.
-    """
-
     def __init__(self):
         super().__init__()
+        self.params = Configuration(**self.configuration.parameters)
+        self.storage_input = StorageInput(**self.configuration.config_data.get("storage", {}).get("input"))
+        self.client = Client(
+            self.environment_variables.url,
+            self.environment_variables.token,
+            self.environment_variables.branch_id,
+        )
 
     def run(self):
+        start_timestamp = time.time()
+        workspaces = self.client.configurations.list_config_workspaces(
+            "keboola.app-data-gateway",
+            self.environment_variables.config_id,
+        )
+        workspace_id = workspaces[-1].get("id")  # get the id of latest created workspace
+
+        table_mapping = self.build_table_mapping()
+
+        try:
+            job = self.client.workspaces.load_tables(
+                workspace_id=workspace_id,
+                table_mapping=table_mapping,
+                preserve=self.params.preserve_existing_tables,
+                load_type="load-clone" if self.params.clone else "load",
+            )
+
+            for i in range(60):
+                job = self.client.jobs.detail(job["id"])
+                if job["status"] in ["success", "error"]:
+                    break
+                logging.info(f"Job {job['id']} is still running, status: {job['status']}")
+                time.sleep(5)
+                if i == 59:
+                    raise UserException(f"Job {job['id']} is still running giving up waiting.")
+
+            match job["status"]:
+                case "error":
+                    logging.debug(f"Table mapping: {table_mapping}")
+                    raise UserException(f"Job {job['id']} failed with error: {job.get('error', {}).get('message')}")
+                case "success":
+                    created = datetime.fromisoformat(job["createdTime"])
+                    start = datetime.fromisoformat(job["startTime"])
+                    end = datetime.fromisoformat(job["endTime"])
+                    logging.info(
+                        f"Load of {self.params.destination_table_name} finished successfully. Queued for "
+                        f"{(start - created).seconds} s and processed for {(end - start).seconds} s."
+                    )
+
+            self.write_state_file({"last_run": start_timestamp})
+
+        except HTTPError as e:
+            raise UserException(f"Loading table failed: {e.response.text}")
+        except Exception as e:
+            raise UserException(f"Loading table failed: {str(e)}")
+
+    def build_table_mapping(self) -> list[dict]:
         """
-        Main execution code
+        Combines the input table with the columns specified in the configuration.
+        Table name from configuration will always match one of the input tables.
         """
+        tbl = [table for table in self.storage_input.tables if table.source == self.params.table_id][0]
+        tbl.destination = self.params.destination_table_name
 
-        # ####### EXAMPLE TO REMOVE
-        # check for missing configuration parameters
-        params = Configuration(**self.configuration.parameters)
+        tbl.columns = []
+        for column in self.params.items:
+            tbl.columns.append(
+                Column(
+                    source=column.name,
+                    destination=column.dbName,
+                    type=column.type,
+                    length=column.size,
+                    nullable=column.nullable,
+                    convert_empty_values_to_null=True,
+                )
+            )
 
-        # Access parameters in configuration
-        if params.print_hello:
-            logging.info("Hello World")
+        in_table = StorageInput(tables=[tbl]).model_dump(by_alias=True)["tables"]
 
-        # get input table definitions
-        input_tables = self.get_input_tables_definitions()
-        for table in input_tables:
-            logging.info(f'Received input table: {table.name} with path: {table.full_path}')
+        # dropTimestampColumn is accepted only by load-clone endpoint
+        if not self.params.clone:
+            in_table[0].pop("dropTimestampColumn")  # it's always list of one table to keep the structure of the API
 
-        if len(input_tables) == 0:
-            raise UserException("No input tables found")
-
-        # get last state data/in/state.json from previous run
-        previous_state = self.get_state_file()
-        logging.info(previous_state.get('some_parameter'))
-
-        # Create output table (Table definition - just metadata)
-        table = self.create_out_table_definition('output.csv', incremental=True, primary_key=['timestamp'])
-
-        # get file path of the table (data/out/tables/Features.csv)
-        out_table_path = table.full_path
-        logging.info(out_table_path)
-
-        # Add timestamp column and save into out_table_path
-        input_table = input_tables[0]
-        with (open(input_table.full_path, 'r') as inp_file,
-              open(table.full_path, mode='wt', encoding='utf-8', newline='') as out_file):
-            reader = csv.DictReader(inp_file)
-
-            columns = list(reader.fieldnames)
-            # append timestamp
-            columns.append('timestamp')
-
-            # write result with column added
-            writer = csv.DictWriter(out_file, fieldnames=columns)
-            writer.writeheader()
-            for in_row in reader:
-                in_row['timestamp'] = datetime.now().isoformat()
-                writer.writerow(in_row)
-
-        # Save table manifest (output.csv.manifest) from the Table definition
-        self.write_manifest(table)
-
-        # Write new state - will be available next run
-        self.write_state_file({"some_state_parameter": "value"})
-
-        # ####### EXAMPLE TO REMOVE END
+        return in_table
 
 
 """
