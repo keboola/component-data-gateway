@@ -28,7 +28,7 @@ class Component(ComponentBase):
             "keboola.app-data-gateway",
             self.environment_variables.config_id,
         )
-        workspace_id = workspaces[-1].get("id") # get the id of latest created workspace
+        workspace_id = workspaces[-1].get("id")  # get the id of latest created workspace
 
         table_mapping = self.build_table_mapping()
 
@@ -94,7 +94,7 @@ class Component(ComponentBase):
 
         # dropTimestampColumn is accepted only by load-clone endpoint
         if not self.params.clone:
-            in_table[0].pop("dropTimestampColumn") # it's always list of one table to keep the structure of the API
+            in_table[0].pop("dropTimestampColumn")  # it's always list of one table to keep the structure of the API
 
         return in_table
 
