@@ -96,6 +96,9 @@ class Component(ComponentBase):
         if not self.params.clone:
             in_table[0].pop("dropTimestampColumn")  # it's always list of one table to keep the structure of the API
 
+        if not self.params.preserve_existing_tables:
+            in_table[0].pop("overwrite")  # supported by API only if preserve is true
+
         return in_table
 
 
