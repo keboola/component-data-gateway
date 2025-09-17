@@ -23,7 +23,7 @@ class Component(ComponentBase):
             self.environment_variables.url,
             self.environment_variables.token,
             self.environment_variables.branch_id,
-            without_files=True,
+            file_storage_support=False,
         )
 
     def run(self):
