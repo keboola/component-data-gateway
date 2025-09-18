@@ -125,19 +125,16 @@ class Component(ComponentBase):
         except Exception as e:
             return ValidationResult(f"{str(e)}", MessageType.ERROR)
 
-        for i in range(20):
+        while True:
             job = self.client.jobs.detail(job["id"])
             if job["status"] in ["success", "error"]:
                 break
             time.sleep(1)
 
-        match job["status"]:
-            case "error":
-                return ValidationResult(f"{job.get('error', {}).get('message')}", MessageType.ERROR)
-            case "success":
-                return ValidationResult("Workspace cleaned successfully", MessageType.SUCCESS)
-
-        return ValidationResult("Workspace cleaning timed out", MessageType.ERROR)
+        if job["status"] == "success":
+            return ValidationResult("Workspace cleaned successfully", MessageType.SUCCESS)
+        else:
+            return ValidationResult(f"{job.get('error', {}).get('message')}", MessageType.ERROR)
 
 
 """
