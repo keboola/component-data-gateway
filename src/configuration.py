@@ -13,11 +13,11 @@ class ColumnSpec(BaseModel):
 
 
 class Configuration(BaseModel):
-    table_id: str = Field(alias="tableId")
-    destination_table_name: str = Field(alias="dbName")
+    table_id: str = Field(alias="tableId", default="")
+    destination_table_name: str = Field(alias="dbName", default="")
     preserve_existing_tables: bool = True
     debug: bool = False
-    items: list[ColumnSpec]
+    items: list[ColumnSpec] = []
     clone: bool = False
 
     def __init__(self, **data):

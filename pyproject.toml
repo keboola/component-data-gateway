@@ -7,14 +7,11 @@ requires-python = ">=3.13"
 dependencies = [
     "flake8>=7.2.0",
     "freezegun>=1.5.1",
-    "kbcstorage",
-    "keboola-component>=1.6.10",
+    "kbcstorage>=0.9.3",
+    "keboola-component>=1.6.13",
     "keboola-http-client>=1.0.1",
     "keboola-utils>=1.1.0",
     "mock>=5.2.0",
     "pydantic>=2.11.3",
     "ruff>=0.11.5",
 ]
-
-[tool.uv.sources]
-kbcstorage = { git = "https://github.com/keboola/sapi-python-client", rev = "feature/CFT-3500-new-workspaces" }

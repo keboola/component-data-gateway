@@ -1,10 +1,13 @@
+import json
 import logging
 import time
 from datetime import datetime
+from pathlib import Path
 
 from kbcstorage.client import Client
-from keboola.component.base import ComponentBase
+from keboola.component.base import ComponentBase, sync_action
 from keboola.component.exceptions import UserException
+from keboola.component.sync_actions import MessageType, ValidationResult
 from requests import HTTPError
 
 from configuration import Configuration
@@ -15,14 +18,17 @@ class Component(ComponentBase):
     def __init__(self):
         super().__init__()
         self.params = Configuration(**self.configuration.parameters)
-        self.storage_input = StorageInput(**self.configuration.config_data.get("storage", {}).get("input"))
+        self.storage_input = None
         self.client = Client(
             self.environment_variables.url,
             self.environment_variables.token,
             self.environment_variables.branch_id,
+            file_storage_support=False,
         )
 
     def run(self):
+        self.storage_input = StorageInput(**self.configuration.config_data.get("storage", {}).get("input"))
+
         start_timestamp = time.time()
         workspaces = self.client.configurations.list_config_workspaces(
             "keboola.app-data-gateway",
@@ -96,7 +102,39 @@ class Component(ComponentBase):
         if not self.params.clone:
             in_table[0].pop("dropTimestampColumn")  # it's always list of one table to keep the structure of the API
 
+        if not self.params.preserve_existing_tables:
+            in_table[0].pop("overwrite")  # supported by API only if preserve is true
+
         return in_table
+
+    @sync_action("clean_workspace")
+    def clean_workspace(self):
+        try:
+            with open(Path.joinpath(Path(self.data_folder_path), "config.json"), "r") as config_file:
+                config_id = json.load(config_file).get("configId")
+
+            workspaces = self.client.configurations.list_config_workspaces("keboola.app-data-gateway", config_id)
+
+            job = self.client.workspaces.load_tables(
+                workspace_id=workspaces[-1].get("id"),
+                table_mapping=[],
+                preserve=False,
+                load_type="load",
+            )
+
+        except Exception as e:
+            return ValidationResult(f"{str(e)}", MessageType.ERROR)
+
+        while True:
+            job = self.client.jobs.detail(job["id"])
+            if job["status"] in ["success", "error"]:
+                break
+            time.sleep(1)
+
+        if job["status"] == "success":
+            return ValidationResult("Workspace cleaned successfully", MessageType.SUCCESS)
+        else:
+            return ValidationResult(f"{job.get('error', {}).get('message')}", MessageType.ERROR)
 
 
 """
