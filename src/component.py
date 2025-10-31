@@ -30,21 +30,12 @@ class Component(ComponentBase):
         self.storage_input = StorageInput(**self.configuration.config_data.get("storage", {}).get("input"))
 
         start_timestamp = time.time()
-        workspaces = self.client.configurations.list_config_workspaces(
-            "keboola.app-data-gateway",
-            self.environment_variables.config_id,
-        )
-
-        if not workspaces:
-            raise UserException("No workspaces found for this configuration, please create workspace first.")
-
-        workspace_id = workspaces[-1].get("id")  # get the id of latest created workspace
 
         table_mapping = self.build_table_mapping()
 
         try:
             job = self.client.workspaces.load_tables(
-                workspace_id=workspace_id,
+                workspace_id=self.get_workspace_id(),
                 table_mapping=table_mapping,
                 preserve=self.params.preserve_existing_tables,
                 load_type="load-clone" if self.params.clone else "load",
@@ -76,6 +67,27 @@ class Component(ComponentBase):
             raise UserException(f"Loading table failed: {e.response.text}")
         except Exception as e:
             raise UserException(f"Loading table failed: {str(e)}")
+
+    def get_workspace_id(self) -> str:
+        workspace_id = self.params.db.workspace_id
+
+        if not workspace_id:  # fallback to old config version
+            config_id = self.environment_variables.config_id
+
+            if not config_id:  # for sync action
+                with open(Path.joinpath(Path(self.data_folder_path), "config.json"), "r") as config_file:
+                    config_id = json.load(config_file).get("configId")
+
+            workspaces = self.client.configurations.list_config_workspaces(
+                "keboola.app-data-gateway",
+                config_id=config_id,
+            )
+
+            if not workspaces:
+                raise UserException("No workspaces found for this configuration, please create workspace first.")
+
+            workspace_id = workspaces[-1].get("id")  # get the id of latest created workspace
+        return workspace_id
 
     def build_table_mapping(self) -> list[dict]:
         """
@@ -112,13 +124,8 @@ class Component(ComponentBase):
     @sync_action("clean_workspace")
     def clean_workspace(self):
         try:
-            with open(Path.joinpath(Path(self.data_folder_path), "config.json"), "r") as config_file:
-                config_id = json.load(config_file).get("configId")
-
-            workspaces = self.client.configurations.list_config_workspaces("keboola.app-data-gateway", config_id)
-
             job = self.client.workspaces.load_tables(
-                workspace_id=workspaces[-1].get("id"),
+                workspace_id=self.get_workspace_id(),
                 table_mapping=[],
                 preserve=False,
                 load_type="load",
