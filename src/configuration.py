@@ -3,6 +3,10 @@ from pydantic import BaseModel, Field, ValidationError
 from keboola.component.exceptions import UserException
 
 
+class Db(BaseModel):
+    workspace_id: int | None = Field(alias="workspaceId", default=None)
+
+
 class ColumnSpec(BaseModel):
     name: str
     dbName: str
@@ -13,6 +17,7 @@ class ColumnSpec(BaseModel):
 
 
 class Configuration(BaseModel):
+    db: Db = Field(default_factory=Db)
     table_id: str = Field(alias="tableId", default="")
     destination_table_name: str = Field(alias="dbName", default="")
     preserve_existing_tables: bool = True
