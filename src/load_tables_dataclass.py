@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field, computed_field
-from typing import Optional
 
 
 class BaseConfigModel(BaseModel):
@@ -9,9 +8,9 @@ class BaseConfigModel(BaseModel):
 
 class Column(BaseConfigModel):
     source: str
-    destination: Optional[str] = None
-    type: Optional[str] = None
-    length: Optional[str] = None
+    destination: str | None = None
+    type: str | None = None
+    length: str | None = None
     nullable: bool = True
     convert_empty_values_to_null: bool = Field(default=False, alias="convertEmptyValuesToNull")
 
@@ -19,13 +18,15 @@ class Column(BaseConfigModel):
 class Table(BaseConfigModel):
     source: str
     destination: str
-    where_column: Optional[str] = Field(default=None, alias="whereColumn")
+    where_column: str | None = Field(default=None, alias="whereColumn")
     where_values: list[str] = Field(default_factory=list, alias="whereValues")
-    where_operator: Optional[str] = Field(default=None, alias="whereOperator")
-    columns: Optional[list[Column] | list[str]] = Field(default_factory=list)
+    where_operator: str = Field(default="eq", alias="whereOperator")
+    columns: list[Column] | list[str] | None = Field(default_factory=list)
     keep_internal_timestamp_column: bool = Field(default=False, exclude=True)
     overwrite: bool = Field(default=True, alias="overwrite")
     incremental: bool = Field(default=False)
+    seconds: int | None = None
+    changed_since: str | None = Field(default=None, alias="changedSince")
 
     @computed_field(alias="dropTimestampColumn", return_type=bool)
     @property
