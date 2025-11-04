@@ -1,13 +1,14 @@
 import json
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from kbcstorage.client import Client
 from keboola.component.base import ComponentBase, sync_action
 from keboola.component.exceptions import UserException
 from keboola.component.sync_actions import MessageType, ValidationResult
+from keboola.utils import get_past_date
 from requests import HTTPError
 
 from configuration import Configuration
@@ -19,6 +20,8 @@ class Component(ComponentBase):
         super().__init__()
         self.params = Configuration(**self.configuration.parameters)
         self.storage_input = None
+        self.start_timestamp = None
+        self.state = self.get_state_file()
         self.client = Client(
             self.environment_variables.url,
             self.environment_variables.token,
@@ -29,7 +32,7 @@ class Component(ComponentBase):
     def run(self):
         self.storage_input = StorageInput(**self.configuration.config_data.get("storage", {}).get("input"))
 
-        start_timestamp = time.time()
+        self.start_timestamp = time.time()
 
         table_mapping = self.build_table_mapping()
 
@@ -61,7 +64,7 @@ class Component(ComponentBase):
                         f"{(start - created).seconds} s and processed for {(end - start).seconds} s."
                     )
 
-            self.write_state_file({"last_run": start_timestamp})
+            self.write_state_file({"last_run": self.start_timestamp})
 
         except HTTPError as e:
             raise UserException(f"Loading table failed: {e.response.text}")
@@ -75,7 +78,7 @@ class Component(ComponentBase):
             config_id = self.environment_variables.config_id
 
             if not config_id:  # for sync action
-                with open(Path.joinpath(Path(self.data_folder_path), "config.json"), "r") as config_file:
+                with open(Path(self.data_folder_path) / "config.json") as config_file:
                     config_id = json.load(config_file).get("configId")
 
             workspaces = self.client.configurations.list_config_workspaces(
@@ -89,6 +92,16 @@ class Component(ComponentBase):
             workspace_id = workspaces[-1].get("id")  # get the id of latest created workspace
         return workspace_id
 
+    def get_since_seconds(self):
+        changed_since = self.storage_input.tables[0].changed_since
+        if changed_since == "adaptive":
+            since = datetime.fromtimestamp(self.state.get("last_run") or 0, tz=timezone.utc)
+        else:
+            since = get_past_date(changed_since)
+
+        delta = datetime.fromtimestamp(self.start_timestamp, tz=timezone.utc) - since
+        return delta.seconds + 60  # to have reserve for component startup
+
     def build_table_mapping(self) -> list[dict]:
         """
         Combines the input table with the columns specified in the configuration.
@@ -96,6 +109,10 @@ class Component(ComponentBase):
         """
         tbl = [table for table in self.storage_input.tables if table.source == self.params.table_id][0]
         tbl.destination = self.params.destination_table_name
+        tbl.incremental = self.params.incremental
+
+        if tbl.incremental:
+            tbl.seconds = self.get_since_seconds()  # TODO: change for since + until when available
 
         tbl.columns = []
         for column in self.params.items:
@@ -116,7 +133,7 @@ class Component(ComponentBase):
         if not self.params.clone:
             in_table[0].pop("dropTimestampColumn")  # it's always list of one table to keep the structure of the API
 
-        if not self.params.preserve_existing_tables:
+        if not self.params.preserve_existing_tables or self.params.incremental:
             in_table[0].pop("overwrite")  # supported by API only if preserve is true
 
         return in_table
