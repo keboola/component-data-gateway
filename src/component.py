@@ -72,7 +72,7 @@ class Component(ComponentBase):
             raise UserException(f"Loading table failed: {str(e)}")
 
     def get_workspace_id(self) -> str:
-        workspace_id = self.params.db.workspace_id
+        workspace_id = self.params.db.workspace_id or self.params.workspace_id
 
         if not workspace_id:  # fallback to old config version
             config_id = self.environment_variables.config_id
