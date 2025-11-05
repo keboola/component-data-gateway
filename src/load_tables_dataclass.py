@@ -6,6 +6,11 @@ class BaseConfigModel(BaseModel):
         validate_by_name = True
 
 
+class PrimaryKey(BaseConfigModel):
+    authority: str = "manual"
+    columns: list[str] | None = Field(default_factory=list)
+
+
 class Column(BaseConfigModel):
     source: str
     destination: str | None = None
@@ -27,6 +32,7 @@ class Table(BaseConfigModel):
     incremental: bool = Field(default=False)
     seconds: int | None = None
     changed_since: str | None = Field(default=None, alias="changedSince")
+    primary_key: PrimaryKey = Field(default_factory=PrimaryKey, alias="primaryKey")
 
     @computed_field(alias="dropTimestampColumn", return_type=bool)
     @property

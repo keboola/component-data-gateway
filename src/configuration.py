@@ -25,6 +25,7 @@ class Configuration(BaseModel):
     debug: bool = False
     items: list[ColumnSpec] = []
     clone: bool = False
+    primary_key: list[str] = Field(alias="primaryKey", default=[])
 
     def __init__(self, **data):
         try:

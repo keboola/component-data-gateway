@@ -109,6 +109,7 @@ class Component(ComponentBase):
         """
         tbl = [table for table in self.storage_input.tables if table.source == self.params.table_id][0]
         tbl.destination = self.params.destination_table_name
+        tbl.primary_key.columns = self.params.primary_key
         tbl.incremental = self.params.incremental
 
         if tbl.incremental:
