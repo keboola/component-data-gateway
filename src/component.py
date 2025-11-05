@@ -137,6 +137,9 @@ class Component(ComponentBase):
         if not self.params.preserve_existing_tables or self.params.incremental:
             in_table[0].pop("overwrite")  # supported by API only if preserve is true
 
+        for c in ["changedSince", "primaryKey"]:  # TODO: remove when supported
+            in_table[0].pop(c)
+
         return in_table
 
     @sync_action("clean_workspace")
