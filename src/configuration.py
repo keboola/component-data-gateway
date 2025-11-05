@@ -4,7 +4,7 @@ from keboola.component.exceptions import UserException
 
 
 class Db(BaseModel):
-    workspace_id: int | None = Field(alias="workspaceId", default=None)  # for job run
+    workspace_id: int | None = Field(alias="workspaceId", default=None)
 
 
 class ColumnSpec(BaseModel):
@@ -26,7 +26,6 @@ class Configuration(BaseModel):
     items: list[ColumnSpec] = []
     clone: bool = False
     primary_key: list[str] = Field(alias="primaryKey", default=[])
-    workspace_id: int | None = Field(alias="workspaceId", default=None)  # for clean_workspace sync action
 
     def __init__(self, **data):
         try:
