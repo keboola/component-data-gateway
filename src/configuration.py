@@ -19,11 +19,13 @@ class ColumnSpec(BaseModel):
 class Configuration(BaseModel):
     db: Db = Field(default_factory=Db)
     table_id: str = Field(alias="tableId", default="")
+    incremental: bool = False
     destination_table_name: str = Field(alias="dbName", default="")
     preserve_existing_tables: bool = True
     debug: bool = False
     items: list[ColumnSpec] = []
     clone: bool = False
+    primary_key: list[str] = Field(alias="primaryKey", default=[])
 
     def __init__(self, **data):
         try:
