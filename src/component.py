@@ -116,6 +116,8 @@ class Component(ComponentBase):
 
         if tbl.incremental:
             tbl.seconds = self.get_since_seconds()  # TODO: change for since + until when available
+        else:
+            tbl.overwrite = True
 
         tbl.columns = []
         for column in self.params.items:
