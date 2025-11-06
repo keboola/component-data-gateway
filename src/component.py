@@ -31,6 +31,8 @@ class Component(ComponentBase):
 
     def run(self):
         self.storage_input = StorageInput(**self.configuration.config_data.get("storage", {}).get("input"))
+        if not self.storage_input.tables:
+            raise UserException("No tables found. Please add one to the input mapping.")
 
         self.start_timestamp = time.time()
 
