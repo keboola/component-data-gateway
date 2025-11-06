@@ -44,6 +44,8 @@ class Component(ComponentBase):
                 load_type="load-clone" if self.params.clone else "load",
             )
 
+            logging.debug(job)
+
             while True:
                 job = self.client.jobs.detail(job["id"])
                 if job["status"] in ["success", "error"]:
