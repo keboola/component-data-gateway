@@ -7,7 +7,7 @@ class BaseConfigModel(BaseModel):
 
 
 class PrimaryKey(BaseConfigModel):
-    authority: str = "manual"
+    autority: str = "manual"
     columns: list[str] | None = Field(default_factory=list)
 
 
