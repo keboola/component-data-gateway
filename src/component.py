@@ -137,8 +137,7 @@ class Component(ComponentBase):
         if not self.params.preserve_existing_tables or self.params.incremental:
             in_table[0].pop("overwrite")  # supported by API only if preserve is true
 
-        for c in ["changedSince", "primaryKey"]:  # TODO: remove when supported
-            in_table[0].pop(c)
+        in_table[0].pop("changedSince")  # TODO: remove when supported
 
         return in_table
 
