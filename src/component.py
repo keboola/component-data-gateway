@@ -43,7 +43,7 @@ class Component(ComponentBase):
                 workspace_id=self.get_workspace_id(),
                 table_mapping=table_mapping,
                 preserve=self.params.preserve_existing_tables,
-                load_type="load-clone" if self.params.clone else "load",
+                load_type="load",
             )
 
             logging.debug(job)
@@ -135,10 +135,6 @@ class Component(ComponentBase):
             )
 
         in_table = StorageInput(tables=[tbl]).model_dump(by_alias=True)["tables"]
-
-        # dropTimestampColumn is accepted only by load-clone endpoint
-        if not self.params.clone:
-            in_table[0].pop("dropTimestampColumn")  # it's always list of one table to keep the structure of the API
 
         if not self.params.preserve_existing_tables or self.params.incremental:
             in_table[0].pop("overwrite")  # supported by API only if preserve is true
