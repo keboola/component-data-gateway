@@ -116,6 +116,9 @@ class Component(ComponentBase):
         tbl.primary_key.columns = self.params.primary_key
         tbl.incremental = self.params.incremental
 
+        if self.params.clone:
+            tbl.load_type = "CLONE"
+
         if tbl.incremental:
             tbl.seconds = self.get_since_seconds()  # TODO: change for since + until when available
         else:

@@ -32,6 +32,7 @@ class Table(BaseConfigModel):
     seconds: int | None = None
     changed_since: str | None = Field(default=None, alias="changedSince")
     primary_key: PrimaryKey = Field(default_factory=PrimaryKey, alias="primaryKey")
+    load_type: str = Field(default="COPY", alias="loadType")
 
 
 class StorageInput(BaseModel):
