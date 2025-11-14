@@ -43,7 +43,6 @@ class Component(ComponentBase):
                 workspace_id=self.get_workspace_id(),
                 table_mapping=table_mapping,
                 preserve=self.params.preserve_existing_tables,
-                load_type="load",
             )
 
             logging.debug(job)
