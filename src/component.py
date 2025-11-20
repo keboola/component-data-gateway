@@ -63,8 +63,8 @@ class Component(ComponentBase):
                     start = datetime.fromisoformat(job["startTime"])
                     end = datetime.fromisoformat(job["endTime"])
                     logging.info(
-                        f"Load of {self.params.destination_table_name} finished successfully. Queued for "
-                        f"{(start - created).seconds} s and processed for {(end - start).seconds} s."
+                        f"Load of {self.params.destination_table_name} finished successfully. Storage job {job['id']} "
+                        f"queued for {(start - created).seconds} s and processed for {(end - start).seconds} s."
                     )
 
             self.write_state_file({"last_run": self.start_timestamp})
