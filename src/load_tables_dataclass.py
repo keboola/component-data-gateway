@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field
 
 
 class BaseConfigModel(BaseModel):
@@ -27,17 +27,12 @@ class Table(BaseConfigModel):
     where_values: list[str] = Field(default_factory=list, alias="whereValues")
     where_operator: str = Field(default="eq", alias="whereOperator")
     columns: list[Column] | list[str] | None = Field(default_factory=list)
-    keep_internal_timestamp_column: bool = Field(default=False, exclude=True)
     overwrite: bool = Field(default=True, alias="overwrite")
     incremental: bool = Field(default=False)
     seconds: int | None = None
     changed_since: str | None = Field(default=None, alias="changedSince")
     primary_key: PrimaryKey = Field(default_factory=PrimaryKey, alias="primaryKey")
-
-    @computed_field(alias="dropTimestampColumn", return_type=bool)
-    @property
-    def drop_timestamp_column(self) -> bool:
-        return not self.keep_internal_timestamp_column
+    load_type: str = Field(default="COPY", alias="loadType")
 
 
 class StorageInput(BaseModel):

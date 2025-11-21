@@ -43,7 +43,6 @@ class Component(ComponentBase):
                 workspace_id=self.get_workspace_id(),
                 table_mapping=table_mapping,
                 preserve=self.params.preserve_existing_tables,
-                load_type="load-clone" if self.params.clone else "load",
             )
 
             logging.debug(job)
@@ -64,8 +63,8 @@ class Component(ComponentBase):
                     start = datetime.fromisoformat(job["startTime"])
                     end = datetime.fromisoformat(job["endTime"])
                     logging.info(
-                        f"Load of {self.params.destination_table_name} finished successfully. Queued for "
-                        f"{(start - created).seconds} s and processed for {(end - start).seconds} s."
+                        f"Load of {self.params.destination_table_name} finished successfully. Storage job {job['id']} "
+                        f"queued for {(start - created).seconds} s and processed for {(end - start).seconds} s."
                     )
 
             self.write_state_file({"last_run": self.start_timestamp})
@@ -116,6 +115,9 @@ class Component(ComponentBase):
         tbl.primary_key.columns = self.params.primary_key
         tbl.incremental = self.params.incremental
 
+        if self.params.clone:
+            tbl.load_type = "CLONE"
+
         if tbl.incremental:
             tbl.seconds = self.get_since_seconds()  # TODO: change for since + until when available
         else:
@@ -135,10 +137,6 @@ class Component(ComponentBase):
             )
 
         in_table = StorageInput(tables=[tbl]).model_dump(by_alias=True)["tables"]
-
-        # dropTimestampColumn is accepted only by load-clone endpoint
-        if not self.params.clone:
-            in_table[0].pop("dropTimestampColumn")  # it's always list of one table to keep the structure of the API
 
         if not self.params.preserve_existing_tables or self.params.incremental:
             in_table[0].pop("overwrite")  # supported by API only if preserve is true
