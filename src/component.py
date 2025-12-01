@@ -149,6 +149,9 @@ class Component(ComponentBase):
 
         in_table[0].pop("changedSince")  # TODO: remove when supported
 
+        if not self.params.clone:
+            in_table[0].pop("dropTimestampColumn")
+
         return in_table
 
     @sync_action("clean_workspace")

@@ -33,6 +33,7 @@ class Table(BaseConfigModel):
     changed_since: str | None = Field(default=None, alias="changedSince")
     primary_key: PrimaryKey = Field(default_factory=PrimaryKey, alias="primaryKey")
     load_type: str = Field(default="COPY", alias="loadType")
+    drop_timestamp_column: bool = Field(default=True, alias="dropTimestampColumn")
 
 
 class StorageInput(BaseModel):
