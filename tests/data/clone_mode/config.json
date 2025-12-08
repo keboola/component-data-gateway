@@ -1,0 +1,44 @@
+{
+  "parameters": {
+    "db": {
+      "workspaceId": 12345
+    },
+    "tableId": "in.c-main.orders",
+    "dbName": "orders_table",
+    "incremental": false,
+    "primaryKey": [],
+    "clone": true,
+    "items": [
+      {
+        "name": "id",
+        "dbName": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": "",
+        "size": "255"
+      },
+      {
+        "name": "total",
+        "dbName": "total",
+        "type": "FLOAT",
+        "nullable": true,
+        "default": "",
+        "size": ""
+      }
+    ]
+  },
+  "storage": {
+    "input": {
+      "tables": [
+        {
+          "source": "in.c-main.orders",
+          "destination": "orders.csv",
+          "columns": [
+            "id",
+            "total"
+          ]
+        }
+      ]
+    }
+  }
+}
