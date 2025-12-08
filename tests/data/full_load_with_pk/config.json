@@ -1,0 +1,56 @@
+{
+  "parameters": {
+    "db": {
+      "workspaceId": 12345
+    },
+    "tableId": "in.c-main.products",
+    "dbName": "products_table",
+    "incremental": false,
+    "primaryKey": [
+      "id",
+      "sku"
+    ],
+    "clone": false,
+    "items": [
+      {
+        "name": "id",
+        "dbName": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": "",
+        "size": "255"
+      },
+      {
+        "name": "sku",
+        "dbName": "sku",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": "",
+        "size": "255"
+      },
+      {
+        "name": "price",
+        "dbName": "price",
+        "type": "FLOAT",
+        "nullable": true,
+        "default": "",
+        "size": ""
+      }
+    ]
+  },
+  "storage": {
+    "input": {
+      "tables": [
+        {
+          "source": "in.c-main.products",
+          "destination": "products.csv",
+          "columns": [
+            "id",
+            "sku",
+            "price"
+          ]
+        }
+      ]
+    }
+  }
+}

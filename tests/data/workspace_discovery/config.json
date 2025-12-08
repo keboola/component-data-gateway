@@ -1,0 +1,33 @@
+{
+  "parameters": {
+    "db": {},
+    "tableId": "in.c-main.users",
+    "dbName": "users_table",
+    "incremental": false,
+    "primaryKey": [],
+    "clone": false,
+    "items": [
+      {
+        "name": "id",
+        "dbName": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": "",
+        "size": "255"
+      }
+    ]
+  },
+  "storage": {
+    "input": {
+      "tables": [
+        {
+          "source": "in.c-main.users",
+          "destination": "users.csv",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    }
+  }
+}

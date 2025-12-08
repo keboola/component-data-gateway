@@ -1,0 +1,45 @@
+{
+  "parameters": {
+    "db": {
+      "workspaceId": 12345
+    },
+    "tableId": "in.c-main.logs",
+    "dbName": "logs_table",
+    "incremental": true,
+    "primaryKey": [],
+    "clone": false,
+    "items": [
+      {
+        "name": "id",
+        "dbName": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": "",
+        "size": "255"
+      },
+      {
+        "name": "message",
+        "dbName": "message",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "",
+        "size": ""
+      }
+    ]
+  },
+  "storage": {
+    "input": {
+      "tables": [
+        {
+          "source": "in.c-main.logs",
+          "destination": "logs.csv",
+          "columns": [
+            "id",
+            "message"
+          ],
+          "changedSince": "-30 minutes"
+        }
+      ]
+    }
+  }
+}
