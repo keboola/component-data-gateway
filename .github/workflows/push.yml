@@ -13,7 +13,7 @@ env:
   KBC_DEVELOPERPORTAL_PASSWORD: ${{ secrets.KBC_DEVELOPERPORTAL_PASSWORD }}
 
   # (Optional) Test KBC project: https://connection.keboola.com/admin/projects/0000
-  KBC_TEST_PROJECT_CONFIGS: "" # space separated list of config ids
+  KBC_TEST_PROJECT_CONFIGS: "01kbz10vg3cc063zmsfcpjwsv9" # space separated list of config ids
   KBC_STORAGE_TOKEN: ${{ secrets.KBC_STORAGE_TOKEN }} # required for running KBC tests
 
 jobs:
@@ -126,7 +126,7 @@ jobs:
           docker run ${{ env.KBC_DEVELOPERPORTAL_APP }}:latest python -m unittest discover
 
   tests-kbc:
-    name: Run KBC Tests
+    name: Run KBC Test Flow via orchestration trigger
     needs:
       - push_event_info
       - build
@@ -141,10 +141,13 @@ jobs:
         if: env.KBC_TEST_PROJECT_CONFIGS != '' && env.KBC_STORAGE_TOKEN != ''
         uses: keboola/action-run-configs-parallel@master
         with:
+          host: connection.us-east4.gcp.keboola.com
           token: ${{ secrets.KBC_STORAGE_TOKEN }}
-          componentId: ${{ env.KBC_DEVELOPERPORTAL_APP }}
-          tag: ${{ needs.push_event_info.outputs.app_image_tag }}
+          componentId: kds-team.app-orchestration-trigger-queue-v2
+          tag: latest
           configs: ${{ env.KBC_TEST_PROJECT_CONFIGS }}
+# TODO: currently we can’t pass tag via a variable, set the in the gateway config:
+# https://connection.us-east4.gcp.keboola.com/admin/projects/4214/components/keboola.app-data-gateway/01kbyta87df49pqxk9n59e5h91
 
   push:
     name: Docker Image Push
