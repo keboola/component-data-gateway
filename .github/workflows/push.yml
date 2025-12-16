@@ -213,6 +213,7 @@ jobs:
       - push_event_info
       - build
       - push
+      - tests-kbc
     if: needs.push_event_info.outputs.is_deploy_ready == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -233,6 +234,7 @@ jobs:
       - push_event_info
       - build
       - push
+      - tests-kbc
     runs-on: ubuntu-latest
     if: needs.push_event_info.outputs.is_deploy_ready == 'true'
     steps:

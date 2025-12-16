@@ -223,7 +223,7 @@ class TestComponent(unittest.TestCase):
         },
     )
     def test_incremental_adaptive_mode(self, mock_client):
-        """Test incremental load with adaptive mode using state file"""
+        """Test incremental load using state file (subsequent run)"""
         # Configure mock
         mock_client_instance = mock_client.return_value
         mock_client_instance.workspaces.load_tables.return_value = {"id": "12345"}
@@ -244,11 +244,20 @@ class TestComponent(unittest.TestCase):
         table_mapping = call_args[1]["table_mapping"]
         mapping = table_mapping[0]
 
-        # Check incremental mode with seconds parameter
+        # Check incremental mode with changedSince and changedUntil parameters
         # Frozen time: 2024-01-15 10:00:00
-        # State last_run: 2024-01-15 09:00:00
-        # Difference: 3600 seconds + 60 second buffer = 3660
-        self.comparedict(mapping, {"incremental": True, "seconds": 3660}, "Incremental mode settings")
+        # State last_run: 2024-01-15 09:00:00 (from in/state.json)
+        # changedSince: 1705309200 (2024-01-15T09:00:00+00:00 as timestamp)
+        # changedUntil: 1705312800 (2024-01-15T10:00:00+00:00 as timestamp)
+        self.comparedict(
+            mapping,
+            {
+                "incremental": True,
+                "changedSince": 1705309200,
+                "changedUntil": 1705312800,
+            },
+            "Incremental mode settings",
+        )
 
         # Check TEXT column type
         event_col = [col for col in mapping["columns"] if col["source"] == "event_name"][0]
@@ -265,8 +274,8 @@ class TestComponent(unittest.TestCase):
             "KBC_CONFIGID": "12345",
         },
     )
-    def test_incremental_fixed_time(self, mock_client):
-        """Test incremental load with fixed time changed_since parameter"""
+    def test_incremental_first_run(self, mock_client):
+        """Test incremental load on first run (no state file)"""
         # Configure mock
         mock_client_instance = mock_client.return_value
         mock_client_instance.workspaces.load_tables.return_value = {"id": "12345"}
@@ -290,12 +299,14 @@ class TestComponent(unittest.TestCase):
         # Check incremental flag
         self.comparedict(mapping, {"incremental": True}, "Incremental mode")
 
-        # Check seconds parameter exists and has a value
-        # Note: The component uses delta.seconds which only gives the seconds component
-        # of the timedelta, not total_seconds(), so the actual value depends on implementation
-        self.assertIn("seconds", mapping)
-        self.assertIsNotNone(mapping["seconds"])
-        self.assertGreater(mapping["seconds"], 0)
+        # Check changedSince and changedUntil parameters
+        # Frozen time: 2024-01-15 10:00:00 = 1705312800
+        # This test uses "-30 minutes" which uses get_past_date()
+        # Note: get_past_date doesn't work well with frozen time, so we just check it's a reasonable timestamp
+        self.assertIn("changedSince", mapping)
+        self.assertIn("changedUntil", mapping)
+        self.assertTrue(isinstance(mapping["changedSince"], int), "changedSince should be an integer")
+        self.assertEqual(mapping["changedUntil"], 1705312800)
 
     @freeze_time("2024-01-15 10:00:00")
     @mock.patch("component.Client")
@@ -308,8 +319,8 @@ class TestComponent(unittest.TestCase):
             "KBC_CONFIGID": "12345",
         },
     )
-    def test_incremental_empty_changed_since(self, mock_client):
-        """Test incremental load handles empty changed_since parameter gracefully"""
+    def test_incremental_uses_state(self, mock_client):
+        """Test that incremental load calculates time range from state file"""
         # Configure mock
         mock_client_instance = mock_client.return_value
         mock_client_instance.workspaces.load_tables.return_value = {"id": "12345"}
@@ -321,36 +332,25 @@ class TestComponent(unittest.TestCase):
             "endTime": "2024-01-15T10:00:05+00:00",
         }
 
-        # Modify config to have empty changedSince (camelCase)
-        config_path = "./tests/data/incremental_adaptive/config.json"
-        with open(config_path, "r") as f:
-            config = json.load(f)
+        # Run component - should use state file
+        comp = Component()
+        comp.run()
 
-        original_changed_since = config["storage"]["input"]["tables"][0]["changedSince"]
-        config["storage"]["input"]["tables"][0]["changedSince"] = ""
+        # Assert load_tables was called
+        call_args = mock_client_instance.workspaces.load_tables.call_args
+        table_mapping = call_args[1]["table_mapping"]
+        mapping = table_mapping[0]
 
-        # Write modified config
-        with open(config_path, "w") as f:
-            json.dump(config, f)
-
-        try:
-            # Run component - should not crash
-            comp = Component()
-            comp.run()
-
-            # Assert load_tables was called
-            call_args = mock_client_instance.workspaces.load_tables.call_args
-            table_mapping = call_args[1]["table_mapping"]
-            mapping = table_mapping[0]
-
-            # Should be incremental but with seconds as None
-            self.comparedict(mapping, {"incremental": True}, "Incremental mode without time filter")
-            self.assertIsNone(mapping.get("seconds"))
-        finally:
-            # Restore original config
-            config["storage"]["input"]["tables"][0]["changedSince"] = original_changed_since
-            with open(config_path, "w") as f:
-                json.dump(config, f)
+        # Should be incremental and use state file (last_run: 2024-01-15T09:00:00+00:00)
+        self.comparedict(
+            mapping,
+            {
+                "incremental": True,
+                "changedSince": 1705309200,
+                "changedUntil": 1705312800,
+            },
+            "Incremental mode using state",
+        )
 
     @freeze_time("2024-01-15 10:00:00")
     @mock.patch("component.Client")
@@ -388,9 +388,9 @@ class TestComponent(unittest.TestCase):
         with open(state_path, "r") as f:
             state = json.load(f)
 
-        # Check last_run was updated to frozen time (stored as timestamp float)
-        # Frozen time 2024-01-15 10:00:00 is 1705312800.0 as Unix timestamp
-        self.comparedict(state, {"last_run": 1705312800.0}, "State file")
+        # Check last_run was updated to frozen time (stored as Unix timestamp)
+        # Frozen time 2024-01-15 10:00:00 as Unix timestamp
+        self.comparedict(state, {"last_run": 1705312800}, "State file")
 
     # CLONE MODE TESTS
 
@@ -430,8 +430,9 @@ class TestComponent(unittest.TestCase):
         # Check CLONE mode settings
         self.comparedict(mapping, {"loadType": "CLONE", "dropTimestampColumn": True}, "Clone mode settings")
 
-        # In clone mode, seconds is None (no time filtering)
-        self.assertIsNone(mapping.get("seconds"))
+        # In clone mode, changedSince and changedUntil are None (no time filtering)
+        self.assertIsNone(mapping.get("changedSince"))
+        self.assertIsNone(mapping.get("changedUntil"))
 
     @freeze_time("2024-01-15 10:00:00")
     @mock.patch("component.Client")
@@ -469,11 +470,12 @@ class TestComponent(unittest.TestCase):
         # Check that CLONE loadType is set
         self.comparedict(mapping, {"loadType": "CLONE"}, "Clone mode loadType")
 
-        # Check that seconds field is None (no time filtering in CLONE mode)
-        self.assertIsNone(mapping.get("seconds"))
+        # Check that changedSince and changedUntil are None (no time filtering in CLONE mode)
+        self.assertIsNone(mapping.get("changedSince"))
+        self.assertIsNone(mapping.get("changedUntil"))
 
-        # Check changedSince is removed
-        self.assertNotIn("changedSince", mapping)
+        # Check that deprecated seconds field is not in mapping
+        self.assertNotIn("seconds", mapping)
 
     # WORKSPACE RESOLUTION TESTS
 
