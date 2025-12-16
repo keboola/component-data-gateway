@@ -12,9 +12,11 @@ env:
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }} # recommended for pushing to ECR
   KBC_DEVELOPERPORTAL_PASSWORD: ${{ secrets.KBC_DEVELOPERPORTAL_PASSWORD }}
 
-  # (Optional) Test KBC project: https://connection.keboola.com/admin/projects/0000
-  KBC_TEST_PROJECT_CONFIGS: "" # space separated list of config ids
+  # (Optional) Test KBC projects - comma separated
+  KBC_TEST_TRIGGER_CONFIGS: "01kck2v5nm21nvwzcd2xsqfpb8" # orchestration trigger config ids (comma-separated)
+  KBC_TEST_GATEWAY_CONFIGS: "01kck1cq37h7cng834ddsqfv5r" # data gateway config ids (comma-separated)
   KBC_STORAGE_TOKEN: ${{ secrets.KBC_STORAGE_TOKEN }} # required for running KBC tests
+  KBC_HOST: "connection.us-east4.gcp.keboola.com" # Keboola host
 
 jobs:
   push_event_info:
@@ -125,26 +127,45 @@ jobs:
           echo "Running unit-tests..."
           docker run ${{ env.KBC_DEVELOPERPORTAL_APP }}:latest python -m unittest discover
 
-  tests-kbc:
-    name: Run KBC Tests
+  update-kbc-test-configs:
+    name: Update KBC Test Configurations with Image Tags
+    runs-on: ubuntu-latest
     needs:
       - push_event_info
-      - build
+      - push
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Update KBC configurations with branch tag
+        if: env.KBC_TEST_GATEWAY_CONFIGS != '' && env.KBC_STORAGE_TOKEN != ''
+        run: |
+          chmod +x scripts/update_kbc_config_tag.sh
+          scripts/update_kbc_config_tag.sh
+        env:
+          KBC_HOST: ${{ env.KBC_HOST }}
+          KBC_STORAGE_TOKEN: ${{ secrets.KBC_STORAGE_TOKEN }}
+          KBC_CONFIG_IDS: ${{ env.KBC_TEST_GATEWAY_CONFIGS }}
+          IMAGE_TAG: ${{ needs.push_event_info.outputs.app_image_tag }}
+          COMPONENT_ID: ${{ env.KBC_DEVELOPERPORTAL_APP }}
+
+  tests-kbc:
+    name: Run KBC Test Flow via orchestration trigger
+    needs:
+      - push_event_info
+      - tests
+      - update-kbc-test-configs
     runs-on: ubuntu-latest
     steps:
-      - name: Set up environment variables
-        run: |
-          echo "KBC_TEST_PROJECT_CONFIGS=${KBC_TEST_PROJECT_CONFIGS}" >> $GITHUB_ENV
-          echo "KBC_STORAGE_TOKEN=${{ secrets.KBC_STORAGE_TOKEN }}" >> $GITHUB_ENV
-
       - name: Run KBC test jobs
-        if: env.KBC_TEST_PROJECT_CONFIGS != '' && env.KBC_STORAGE_TOKEN != ''
+        if: env.KBC_TEST_TRIGGER_CONFIGS != '' && env.KBC_STORAGE_TOKEN != ''
         uses: keboola/action-run-configs-parallel@master
         with:
+          host: ${{ env.KBC_HOST }}
           token: ${{ secrets.KBC_STORAGE_TOKEN }}
-          componentId: ${{ env.KBC_DEVELOPERPORTAL_APP }}
-          tag: ${{ needs.push_event_info.outputs.app_image_tag }}
-          configs: ${{ env.KBC_TEST_PROJECT_CONFIGS }}
+          componentId: kds-team.app-orchestration-trigger-queue-v2
+          tag: latest
+          configs: ${{ env.KBC_TEST_TRIGGER_CONFIGS }}
 
   push:
     name: Docker Image Push
@@ -152,7 +173,6 @@ jobs:
     needs:
       - push_event_info
       - tests
-      - tests-kbc
     env:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:

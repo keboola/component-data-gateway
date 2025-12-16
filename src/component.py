@@ -123,9 +123,7 @@ class Component(ComponentBase):
             if changed_since:
                 tbl.seconds = self.get_since_seconds()  # TODO: change for since + until when available
             else:
-                logging.info(
-                    "'Data changed in last' is not set. Loading all data incrementally without date filter."
-                )
+                logging.info("'Data changed in last' is not set. Loading all data incrementally without date filter.")
         else:
             tbl.overwrite = True
 

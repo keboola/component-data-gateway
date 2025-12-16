@@ -1,0 +1,8 @@
+{
+  "parameters": {
+    "db": {
+      "workspaceId": 12345
+    }
+  },
+  "action": "clean_workspace"
+}
