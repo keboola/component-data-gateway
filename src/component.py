@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 from kbcstorage.client import Client
@@ -34,7 +34,7 @@ class Component(ComponentBase):
         if not self.storage_input.tables:
             raise UserException("No tables found. Please add one to the input mapping.")
 
-        self.start_timestamp = time.time()
+        self.start_timestamp = int(time.time())
 
         table_mapping = self.build_table_mapping()
 
@@ -45,6 +45,7 @@ class Component(ComponentBase):
                 preserve=self.params.preserve_existing_tables,
             )
 
+            logging.debug(table_mapping)
             logging.debug(job)
 
             while True:
@@ -95,15 +96,19 @@ class Component(ComponentBase):
             workspace_id = workspaces[-1].get("id")  # get the id of latest created workspace
         return workspace_id
 
-    def get_since_seconds(self):
-        changed_since = self.storage_input.tables[0].changed_since
+    def get_time_range(self, changed_since):
         if changed_since == "adaptive":
-            since = datetime.fromtimestamp(self.state.get("last_run") or 0, tz=timezone.utc)
+            last_run = self.state.get("last_run")
+            if not last_run:
+                since = 0
+            else:
+                since = int(last_run)
         else:
-            since = get_past_date(changed_since)
+            # Manual incremental load (e.g., "-30 minutes")
+            since_datetime = get_past_date(changed_since)
+            since = int(since_datetime.timestamp())
 
-        delta = datetime.fromtimestamp(self.start_timestamp, tz=timezone.utc) - since
-        return delta.seconds + 60  # to have reserve for component startup
+        return since, self.start_timestamp
 
     def build_table_mapping(self) -> list[dict]:
         """
@@ -119,11 +124,7 @@ class Component(ComponentBase):
             tbl.load_type = "CLONE"
 
         if tbl.incremental:
-            changed_since = self.storage_input.tables[0].changed_since
-            if changed_since:
-                tbl.seconds = self.get_since_seconds()  # TODO: change for since + until when available
-            else:
-                logging.info("'Data changed in last' is not set. Loading all data incrementally without date filter.")
+            tbl.changed_since, tbl.changed_until = self.get_time_range(tbl.changed_since)
         else:
             tbl.overwrite = True
 
@@ -151,8 +152,6 @@ class Component(ComponentBase):
 
         if not self.params.preserve_existing_tables or self.params.incremental:
             in_table[0].pop("overwrite")  # supported by API only if preserve is true
-
-        in_table[0].pop("changedSince")  # TODO: remove when supported
 
         if not self.params.clone:
             in_table[0].pop("dropTimestampColumn")
