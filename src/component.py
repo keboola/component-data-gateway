@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from kbcstorage.client import Client
@@ -13,6 +13,17 @@ from requests import HTTPError
 
 from configuration import Configuration
 from load_tables_dataclass import Column, StorageInput
+
+
+def parse_last_run_to_timestamp(last_run) -> int:
+    if isinstance(last_run, (int, float)):
+        # Backward compatibility: already a unix timestamp
+        return int(last_run)
+    elif isinstance(last_run, str):
+        dt = datetime.fromisoformat(last_run)
+        return int(dt.timestamp())
+    else:
+        raise ValueError(f"Invalid last_run format: {type(last_run)}")
 
 
 class Component(ComponentBase):
@@ -68,7 +79,8 @@ class Component(ComponentBase):
                         f"queued for {(start - created).seconds} s and processed for {(end - start).seconds} s."
                     )
 
-            self.write_state_file({"last_run": self.start_timestamp})
+            last_run_dt = datetime.fromtimestamp(self.start_timestamp, tz=timezone.utc)
+            self.write_state_file({"last_run": last_run_dt.astimezone().isoformat()})
 
         except HTTPError as e:
             raise UserException(f"Loading table failed: {e.response.text}")
@@ -102,7 +114,7 @@ class Component(ComponentBase):
             if not last_run:
                 since = 1
             else:
-                since = int(last_run)
+                since = parse_last_run_to_timestamp(last_run)
         else:
             # Manual incremental load (e.g., "-30 minutes")
             since_datetime = get_past_date(changed_since)
