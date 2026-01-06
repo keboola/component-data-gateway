@@ -388,9 +388,9 @@ class TestComponent(unittest.TestCase):
         with open(state_path, "r") as f:
             state = json.load(f)
 
-        # Check last_run was updated to frozen time (stored as Unix timestamp)
-        # Frozen time 2024-01-15 10:00:00 as Unix timestamp
-        self.comparedict(state, {"last_run": 1705312800}, "State file")
+        # Check last_run was updated to frozen time (stored as ISO format string)
+        # Frozen time 2024-01-15 10:00:00 as ISO format
+        self.comparedict(state, {"last_run": "2024-01-15T10:00:00+00:00"}, "State file")
 
     # CLONE MODE TESTS
 
