@@ -4,7 +4,7 @@ import os
 import json
 from freezegun import freeze_time
 
-from component import Component
+from component import Component, parse_last_run_to_timestamp
 
 
 class TestComponent(unittest.TestCase):
@@ -20,6 +20,20 @@ class TestComponent(unittest.TestCase):
         for key, expected_value in expected.items():
             self.assertIn(key, actual, f"{msg}: Key '{key}' not found in actual dict")
             self.assertEqual(actual[key], expected_value, f"{msg}: Value mismatch for key '{key}'")
+
+    def test_parse_last_run_to_timestamp(self):
+        """Test parse_last_run_to_timestamp handles both Unix timestamp and ISO format"""
+        # Test Unix timestamp (int)
+        result = parse_last_run_to_timestamp(1767792606)
+        self.assertEqual(result, 1767792606)
+
+        # Test Unix timestamp (float)
+        result = parse_last_run_to_timestamp(1767792606.0)
+        self.assertEqual(result, 1767792606)
+
+        # Test ISO format string
+        result = parse_last_run_to_timestamp("2026-01-07T13:30:06+00:00")
+        self.assertEqual(result, 1767792606)
 
     # set global time to 2010-10-10 - affects functions like datetime.now()
     @freeze_time("2010-10-10")
@@ -388,9 +402,9 @@ class TestComponent(unittest.TestCase):
         with open(state_path, "r") as f:
             state = json.load(f)
 
-        # Check last_run was updated to frozen time (stored as Unix timestamp)
-        # Frozen time 2024-01-15 10:00:00 as Unix timestamp
-        self.comparedict(state, {"last_run": 1705312800}, "State file")
+        # Check last_run was updated to frozen time (stored as ISO format string)
+        # Frozen time 2024-01-15 10:00:00 as ISO format
+        self.comparedict(state, {"last_run": "2024-01-15T10:00:00+00:00"}, "State file")
 
     # CLONE MODE TESTS
 
