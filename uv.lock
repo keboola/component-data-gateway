@@ -173,7 +173,7 @@ dependencies = [
 requires-dist = [
     { name = "flake8", specifier = ">=7.2.0" },
     { name = "freezegun", specifier = ">=1.5.1" },
-    { name = "kbcstorage", git = "https://github.com/keboola/sapi-python-client?branch=add-run-id-header" },
+    { name = "kbcstorage", specifier = ">=0.9.5" },
     { name = "keboola-component", specifier = ">=1.6.13" },
     { name = "keboola-http-client", specifier = ">=1.0.1" },
     { name = "keboola-utils", specifier = ">=1.1.0" },
@@ -419,8 +419,8 @@ wheels = [
 
 [[package]]
 name = "kbcstorage"
-version = "0.9.4.post1+git.0cdd2044.dirty"
-source = { git = "https://github.com/keboola/sapi-python-client?branch=add-run-id-header#0cdd2044a287f98d46c8a3bc523cb2f4418e8afe" }
+version = "0.9.5"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "azure-storage-blob" },
     { name = "boto3" },
@@ -430,6 +430,10 @@ dependencies = [
     { name = "requests" },
     { name = "responses" },
     { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/49/49/e0d0f476ba1b44c29c790f7e95514fcdf3097f10a54c53f17fcb1ddf505a/kbcstorage-0.9.5.tar.gz", hash = "sha256:3848d73f839e7bfd980bd06707ed0b4512b5b76f132ce643db8b5522b9531cf4", size = 38706 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/18/5c/5aeb25d9b257a577ee8da1bb8beebffd178cf10a6120b5afb732fae13421/kbcstorage-0.9.5-py3-none-any.whl", hash = "sha256:4c3e1587969fc7e7e6b55f44d8cf0dd31698bb6e09ac1851f109df14d5a9c729", size = 26821 },
 ]
 
 [[package]]
