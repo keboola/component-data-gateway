@@ -19,7 +19,9 @@ class TestComponent(unittest.TestCase):
         """
         for key, expected_value in expected.items():
             self.assertIn(key, actual, f"{msg}: Key '{key}' not found in actual dict")
-            self.assertEqual(actual[key], expected_value, f"{msg}: Value mismatch for key '{key}'")
+            self.assertEqual(
+                actual[key], expected_value, f"{msg}: Value mismatch for key '{key}'"
+            )
 
     def test_parse_last_run_to_timestamp(self):
         """Test parse_last_run_to_timestamp handles both Unix timestamp and ISO format"""
@@ -76,28 +78,48 @@ class TestComponent(unittest.TestCase):
 
         # Assert load_tables call
         call_args = mock_client_instance.workspaces.load_tables.call_args
-        self.comparedict(call_args[1], {"workspace_id": 12345, "preserve": True}, "load_tables parameters")
+        self.comparedict(
+            call_args[1],
+            {"workspace_id": 12345, "preserve": True},
+            "load_tables parameters",
+        )
 
         # Check table mapping
         table_mapping = call_args[1]["table_mapping"]
         self.assertEqual(len(table_mapping), 1)
 
         mapping = table_mapping[0]
-        self.comparedict(mapping, {"source": "in.c-main.users", "destination": "users_table"}, "Table mapping")
+        self.comparedict(
+            mapping,
+            {"source": "in.c-main.users", "destination": "users_table"},
+            "Table mapping",
+        )
         self.assertEqual(len(mapping["columns"]), 2)
 
         # Check columns (they are dicts, not objects)
         col_0 = mapping["columns"][0]
         self.comparedict(
             col_0,
-            {"source": "id", "destination": "id", "type": "VARCHAR", "length": "255", "nullable": False},
+            {
+                "source": "id",
+                "destination": "id",
+                "type": "VARCHAR",
+                "length": "255",
+                "nullable": False,
+            },
             "Column 0",
         )
 
         col_1 = mapping["columns"][1]
         self.comparedict(
             col_1,
-            {"source": "name", "destination": "name", "type": "VARCHAR", "length": "255", "nullable": True},
+            {
+                "source": "name",
+                "destination": "name",
+                "type": "VARCHAR",
+                "length": "255",
+                "nullable": True,
+            },
             "Column 1",
         )
 
@@ -274,7 +296,9 @@ class TestComponent(unittest.TestCase):
         )
 
         # Check TEXT column type
-        event_col = [col for col in mapping["columns"] if col["source"] == "event_name"][0]
+        event_col = [
+            col for col in mapping["columns"] if col["source"] == "event_name"
+        ][0]
         self.comparedict(event_col, {"type": "TEXT"}, "Event name column")
 
     @freeze_time("2024-01-15 10:00:00")
@@ -319,7 +343,10 @@ class TestComponent(unittest.TestCase):
         # Note: get_past_date doesn't work well with frozen time, so we just check it's a reasonable timestamp
         self.assertIn("changedSince", mapping)
         self.assertIn("changedUntil", mapping)
-        self.assertTrue(isinstance(mapping["changedSince"], int), "changedSince should be an integer")
+        self.assertTrue(
+            isinstance(mapping["changedSince"], int),
+            "changedSince should be an integer",
+        )
         self.assertEqual(mapping["changedUntil"], 1705312800)
 
     @freeze_time("2024-01-15 10:00:00")
@@ -442,7 +469,14 @@ class TestComponent(unittest.TestCase):
         mapping = table_mapping[0]
 
         # Check CLONE mode settings
-        self.comparedict(mapping, {"loadType": "CLONE", "dropTimestampColumn": True}, "Clone mode settings")
+        self.comparedict(
+            mapping,
+            {"loadType": "CLONE", "dropTimestampColumn": True},
+            "Clone mode settings",
+        )
+
+        # In clone mode, columns must not be present (API rejects them)
+        self.assertNotIn("columns", mapping)
 
         # In clone mode, changedSince and changedUntil are None (no time filtering)
         self.assertIsNone(mapping.get("changedSince"))
@@ -483,6 +517,9 @@ class TestComponent(unittest.TestCase):
 
         # Check that CLONE loadType is set
         self.comparedict(mapping, {"loadType": "CLONE"}, "Clone mode loadType")
+
+        # In clone mode, columns must not be present (API rejects them)
+        self.assertNotIn("columns", mapping)
 
         # Check that changedSince and changedUntil are None (no time filtering in CLONE mode)
         self.assertIsNone(mapping.get("changedSince"))
@@ -662,7 +699,10 @@ class TestComponent(unittest.TestCase):
         # Configure mock
         mock_client_instance = mock_client.return_value
         mock_client_instance.workspaces.load_tables.return_value = {"id": "12345"}
-        mock_client_instance.jobs.detail.return_value = {"status": "success", "id": "12345"}
+        mock_client_instance.jobs.detail.return_value = {
+            "status": "success",
+            "id": "12345",
+        }
 
         # Run sync action directly
         comp = Component()
@@ -672,7 +712,12 @@ class TestComponent(unittest.TestCase):
         call_args = mock_client_instance.workspaces.load_tables.call_args
         self.comparedict(
             call_args[1],
-            {"workspace_id": 12345, "table_mapping": [], "preserve": False, "load_type": "load"},
+            {
+                "workspace_id": 12345,
+                "table_mapping": [],
+                "preserve": False,
+                "load_type": "load",
+            },
             "clean_workspace parameters",
         )
 
