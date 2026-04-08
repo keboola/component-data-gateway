@@ -17,7 +17,9 @@ class Column(BaseConfigModel):
     type: str | None = None
     length: str | None = None
     nullable: bool = True
-    convert_empty_values_to_null: bool = Field(default=False, alias="convertEmptyValuesToNull")
+    convert_empty_values_to_null: bool = Field(
+        default=False, alias="convertEmptyValuesToNull"
+    )
 
 
 class Table(BaseConfigModel):
