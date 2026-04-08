@@ -148,32 +148,35 @@ class Component(ComponentBase):
         else:
             tbl.overwrite = True
 
-        tbl.columns = []
-        for column in self.params.items:
-            tbl.columns.append(
-                Column(
-                    source=column.name,
-                    destination=column.dbName,
-                    type=column.type,
-                    length=column.size,
-                    nullable=column.nullable,
-                    convert_empty_values_to_null=column.nullable,  # design decision to use the same "nullable" param
+        if not self.params.clone:
+            tbl.columns = []
+            for column in self.params.items:
+                tbl.columns.append(
+                    Column(
+                        source=column.name,
+                        destination=column.dbName,
+                        type=column.type,
+                        length=column.size,
+                        nullable=column.nullable,
+                        convert_empty_values_to_null=column.nullable,  # design decision use the same "nullable" param
+                    )
                 )
-            )
 
-        # Validate primary key columns are in selected columns
-        if self.params.primary_key:
-            dest_column_names = {column.dbName for column in self.params.items}
-            missing_columns = [pk for pk in self.params.primary_key if pk not in dest_column_names]
-            if missing_columns:
-                raise UserException(f"Primary key columns not in selected columns: {', '.join(missing_columns)}")
+            # Validate primary key columns are in selected columns
+            if self.params.primary_key:
+                dest_column_names = {column.dbName for column in self.params.items}
+                missing_columns = [pk for pk in self.params.primary_key if pk not in dest_column_names]
+                if missing_columns:
+                    raise UserException(f"Primary key columns not in selected columns: {', '.join(missing_columns)}")
 
         in_table = StorageInput(tables=[tbl]).model_dump(by_alias=True)["tables"]
 
         if not self.params.preserve_existing_tables or self.params.incremental:
             in_table[0].pop("overwrite")  # supported by API only if preserve is true
 
-        if not self.params.clone:
+        if self.params.clone:
+            in_table[0].pop("columns", None)
+        else:
             in_table[0].pop("dropTimestampColumn")
 
         return in_table

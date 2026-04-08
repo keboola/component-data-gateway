@@ -448,6 +448,9 @@ class TestComponent(unittest.TestCase):
         self.assertIsNone(mapping.get("changedSince"))
         self.assertIsNone(mapping.get("changedUntil"))
 
+        # In clone mode, columns must not be present
+        self.assertNotIn("columns", mapping)
+
     @freeze_time("2024-01-15 10:00:00")
     @mock.patch("component.Client")
     @mock.patch.dict(
@@ -490,6 +493,9 @@ class TestComponent(unittest.TestCase):
 
         # Check that deprecated seconds field is not in mapping
         self.assertNotIn("seconds", mapping)
+
+        # Check that columns are not in mapping (not allowed for clone)
+        self.assertNotIn("columns", mapping)
 
     # WORKSPACE RESOLUTION TESTS
 
