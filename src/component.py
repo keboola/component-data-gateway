@@ -158,7 +158,7 @@ class Component(ComponentBase):
                         type=column.type,
                         length=column.size,
                         nullable=column.nullable,
-                        convert_empty_values_to_null=column.nullable,  # design decision to use the same "nullable" param
+                        convert_empty_values_to_null=column.nullable,  # design decision use the same "nullable" param
                     )
                 )
 
