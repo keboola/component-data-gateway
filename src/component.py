@@ -117,8 +117,18 @@ class Component(ComponentBase):
                 since = parse_last_run_to_timestamp(last_run)
         else:
             # Manual incremental load (e.g., "-30 minutes")
-            since_datetime = get_past_date(changed_since)
-            since = int(since_datetime.timestamp())
+            try:
+                since_datetime = get_past_date(changed_since)
+                if since_datetime is None:
+                    raise ValueError("get_past_date returned None")
+                since = int(since_datetime.timestamp())
+            except (AttributeError, ValueError, TypeError) as e:
+                raise UserException(
+                    f"Invalid 'changed_since' value: '{changed_since}'. "
+                    f"Valid formats include: '-30 minutes', '-1 hour', '-5 days', "
+                    f"'30 minutes ago', '5 hours ago', 'yesterday', 'today', or 'adaptive'. "
+                    f"Original error: {e}"
+                )
 
         return since, self.start_timestamp
 
