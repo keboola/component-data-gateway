@@ -4,6 +4,8 @@ import os
 import json
 from freezegun import freeze_time
 
+from keboola.component.exceptions import UserException
+
 from component import Component, parse_last_run_to_timestamp
 
 
@@ -222,6 +224,50 @@ class TestComponent(unittest.TestCase):
             config["parameters"]["tableId"] = original_table_id
             with open(config_path, "w") as f:
                 json.dump(config, f)
+
+    @freeze_time("2024-01-15 10:00:00")
+    @mock.patch("component.Client")
+    @mock.patch.dict(
+        os.environ,
+        {
+            "KBC_DATADIR": "./tests/data/no_input_mapping",
+            "KBC_STACKID": "connection.keboola.com",
+            "KBC_TOKEN": "test-token",
+            "KBC_CONFIGID": "12345",
+        },
+    )
+    def test_missing_input_mapping_raises_user_exception(self, mock_client):
+        """A config whose storage block has no `input` fails as a UserException, not an internal error"""
+        mock_client_instance = mock_client.return_value
+
+        comp = Component()
+        with self.assertRaises(UserException) as ctx:
+            comp.run()
+
+        self.assertIn("input mapping", str(ctx.exception))
+        mock_client_instance.workspaces.load_tables.assert_not_called()
+
+    @freeze_time("2024-01-15 10:00:00")
+    @mock.patch("component.Client")
+    @mock.patch.dict(
+        os.environ,
+        {
+            "KBC_DATADIR": "./tests/data/null_storage",
+            "KBC_STACKID": "connection.keboola.com",
+            "KBC_TOKEN": "test-token",
+            "KBC_CONFIGID": "12345",
+        },
+    )
+    def test_null_storage_raises_user_exception(self, mock_client):
+        """A config with a null `storage` block fails as a UserException, not an internal error"""
+        mock_client_instance = mock_client.return_value
+
+        comp = Component()
+        with self.assertRaises(UserException) as ctx:
+            comp.run()
+
+        self.assertIn("input mapping", str(ctx.exception))
+        mock_client_instance.workspaces.load_tables.assert_not_called()
 
     # INCREMENTAL LOAD TESTS
 

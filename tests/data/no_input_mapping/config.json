@@ -1,0 +1,18 @@
+{
+  "parameters": {
+    "db": {
+      "workspaceId": 12345
+    },
+    "tableId": "in.c-main.users",
+    "dbName": "users_table",
+    "incremental": false,
+    "primaryKey": [],
+    "clone": false,
+    "items": []
+  },
+  "storage": {
+    "output": {
+      "tables": []
+    }
+  }
+}
