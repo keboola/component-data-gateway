@@ -41,7 +41,11 @@ class Component(ComponentBase):
         )
 
     def run(self):
-        self.storage_input = StorageInput(**self.configuration.config_data.get("storage", {}).get("input"))
+        # `storage` or `storage.input` can be missing / null when the configuration has no input
+        # mapping at all. Default to an empty mapping so this falls through to the UserException
+        # below instead of crashing with `argument after ** must be a mapping, not NoneType`.
+        storage_input = (self.configuration.config_data.get("storage") or {}).get("input") or {}
+        self.storage_input = StorageInput(**storage_input)
         if not self.storage_input.tables:
             raise UserException("No tables found. Please add one to the input mapping.")
 
